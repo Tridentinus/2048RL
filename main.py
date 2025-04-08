@@ -126,7 +126,8 @@ class Tile:
     def move(self,delta):
         self.x += delta[0]
         self.y += delta[1]
-        
+
+
         
 def draw_grid(window):
     for row in range(1,ROWS):
@@ -228,7 +229,7 @@ def move_tiles(window,tiles,clock,direction,game):
         )
         ceil = False
     score_up=0
-
+    win_detected = False
     while updated:
         clock.tick(FPS)
         updated = False
@@ -250,6 +251,8 @@ def move_tiles(window,tiles,clock,direction,game):
                 else:
                     next_tile.value *= 2
                     score_up += next_tile.value
+                    if next_tile.value == 2048:
+                        win_detected = True
                     sorted_tiles.pop(i)
                     blocks.add(next_tile)
             elif move_check(tile, next_tile):
@@ -261,9 +264,13 @@ def move_tiles(window,tiles,clock,direction,game):
             updated = True
 
         update_tiles(window, tiles, sorted_tiles,game)
-
+    if win_detected:
+        print("You win!")
     return end_move(tiles), score_up
     
+
+
+
 @timer    
 def check_loss(tiles):
     # print("checking length")

@@ -22,11 +22,11 @@ class ReplayAgent:
                 # print(line)
                 return line
 
-# for _ in range(10):
-#     string +=",up"
-# keyboard.add_hotkey('up', lambda: keyboard.press_and_release(string))
+for _ in range(10):
+    string +=",up"
+keyboard.add_hotkey('down', lambda: keyboard.press(string))
 
-# keyboard.wait()
+keyboard.wait()
 
 
 def main():
