@@ -1,7 +1,10 @@
 import numpy as np
 import tensorflow as tf
+policy = tf.keras.mixed_precision.Policy('mixed_float16')
+tf.keras.mixed_precision.set_global_policy(policy)
 from tensorflow import keras
 from tensorflow.keras import layers
+
 import random
 from collections import deque
 import os
@@ -36,7 +39,7 @@ class DQNAgent:
         
         # Experience replay parameters
         self.memory = deque(maxlen=100000)
-        self.batch_size = 64
+        self.batch_size = 32
         
         # Build models
         self.model = self._build_model()
@@ -106,38 +109,33 @@ class DQNAgent:
         return best_action, act_values
     @timer
     def replay(self):
-        """Train the model using experience replay."""
-        if len(self.memory) < self.batch_size:
-            return
-        
-        # Sample random minibatch
-        minibatch = random.sample(self.memory, self.batch_size)
-        
-        # Prepare batch data
-        states = np.zeros((self.batch_size, *self.state_shape))
-        targets = np.zeros((self.batch_size, self.action_size))
-        
-        # for i, (state, action, reward, next_state, done) in enumerate(minibatch):
-        #     states[i] = state
-            
-        #     # Compute target Q-value
-        #     target = reward
-        #     if not done:
-        #         next_q_values = self.target_model.predict(np.expand_dims(next_state, axis=0), verbose=0)[0]
-        #         target += self.gamma * np.max(next_q_values)
-            
-        #     # Get current Q-values and update the target for the chosen action
-        #     targets[i] = self.model.predict(np.expand_dims(state, axis=0), verbose=0)[0]
-        #     targets[i][action] = target
-        targets = self.model.predict(states, verbose=0)
-
-
-        # Train the model
-        self.model.fit(states, targets, epochs=1, verbose=0)
-        
-        # Decay epsilon
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
+      if len(self.memory) < self.batch_size:
+          return
+      
+      # Sample batch
+      minibatch = random.sample(self.memory, self.batch_size)
+      
+      # Prepare batch data
+      states = np.array([experience[0] for experience in minibatch])
+      actions = np.array([experience[1] for experience in minibatch])
+      rewards = np.array([experience[2] for experience in minibatch])
+      next_states = np.array([experience[3] for experience in minibatch])
+      dones = np.array([experience[4] for experience in minibatch])
+      
+      # Get all predictions in one batch
+      current_q_values = self.model.predict(states, verbose=0)
+      next_q_values = self.target_model.predict(next_states, verbose=0)
+      
+      # Calculate targets
+      targets = current_q_values.copy()
+      for i in range(self.batch_size):
+          if dones[i]:
+              targets[i, actions[i]] = rewards[i]
+          else:
+              targets[i, actions[i]] = rewards[i] + self.gamma * np.max(next_q_values[i])
+      
+      # Train model
+      self.model.fit(states, targets, epochs=1, verbose=0, batch_size=self.batch_size)
     
     def load(self, name):
         """Load model weights."""
@@ -201,10 +199,11 @@ class DQNAgent:
                 state = next_state
                 
                 # Learn from experiences
-                self.replay()
-                
+                # self.replay()
+                if steps % 4 == 0:
+                  self.replay()
                 # Update target model periodically
-                if steps % 100 == 0:
+                if steps % 500 == 0:
                     self.update_target_model()
                     
                 steps += 1
