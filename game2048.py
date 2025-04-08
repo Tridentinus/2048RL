@@ -271,7 +271,7 @@ def move_tiles(window,tiles,clock,direction,game):
 
 
 
-@timer    
+# @timer    
 def check_loss(tiles):
     # print("checking length")
     if len(tiles) < 16:

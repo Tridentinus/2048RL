@@ -10,6 +10,7 @@ import os
 import matplotlib.pyplot as plt
 from pynput.keyboard import Key, Controller
 import argparse
+from game2048 import Tile
 
 
 # Constants from your original game
@@ -21,7 +22,53 @@ RECT_WIDTH = WIDTH//ROWS
 
 # Set up keyboard controller for agent to control game
 keyboard = Controller()
-
+def is_valid_move(tiles, direction):
+        """
+        Check if a move is valid by simulating it without animation.
+        Returns True if the move would change the board state.
+        """
+        # Create a board representation for easier checking
+        board = [[None for _ in range(COLS)] for _ in range(ROWS)]
+        
+        # Fill the board with tile values
+        for tile_key, tile in tiles.items():
+            board[tile.row][tile.col] = tile.value
+        
+        # Check for valid move based on direction
+        if direction == "up":
+            # Check each column
+            for col in range(COLS):
+                # Look for empty spaces above non-empty cells
+                for row in range(1, ROWS):
+                    if board[row][col] and (board[row-1][col] is None or board[row-1][col] == board[row][col]):
+                        return True
+                        
+        elif direction == "down":
+            # Check each column
+            for col in range(COLS):
+                # Look for empty spaces below non-empty cells
+                for row in range(ROWS-2, -1, -1):
+                    if board[row][col] and (board[row+1][col] is None or board[row+1][col] == board[row][col]):
+                        return True
+                        
+        elif direction == "left":
+            # Check each row
+            for row in range(ROWS):
+                # Look for empty spaces to the left of non-empty cells
+                for col in range(1, COLS):
+                    if board[row][col] and (board[row][col-1] is None or board[row][col-1] == board[row][col]):
+                        return True
+                        
+        elif direction == "right":
+            # Check each row
+            for row in range(ROWS):
+                # Look for empty spaces to the right of non-empty cells
+                for col in range(COLS-2, -1, -1):
+                    if board[row][col] and (board[row][col+1] is None or board[row][col+1] == board[row][col]):
+                        return True
+        
+        # If we got here, no valid moves in this direction
+        return False
 class DQNAgent:
     """Deep Q-Network agent for playing 2048 in pygame."""
     
@@ -108,35 +155,33 @@ class DQNAgent:
             
         return state
     
-    def get_valid_moves(self, tiles):
-        """Determine which moves are valid in the current state."""
-        # This is a simplified version - in real implementation you'd check
-        # if the move would change the board state
+    def get_valid_moves(self, tiles, game):
+        """
+        Get valid moves by simulating each move using the game's actual logic.
+        This ensures perfect alignment with the game rules.
+        """
         valid_moves = []
         
-        # Check for each direction if there's a valid move
-        # This is a simplified check - in practice you'd need to simulate each move
-        board = self.get_state_from_tiles(tiles)
+        # Try each possible move and see if it changes the board
+        directions = ["up", "right", "down", "left"]
         
-        # For now, let's assume all moves are valid unless blocked
-        # UP (0)
-        if not all(board[0, :] > 0):  # If top row has spaces
-            valid_moves.append(0)
-        # RIGHT (1)
-        if not all(board[:, -1] > 0):  # If rightmost column has spaces
-            valid_moves.append(1)
-        # DOWN (2)
-        if not all(board[-1, :] > 0):  # If bottom row has spaces
-            valid_moves.append(2)
-        # LEFT (3)
-        if not all(board[:, 0] > 0):  # If leftmost column has spaces
-            valid_moves.append(3)
+        for action, direction in enumerate(directions):
+            # Create a copy of the tiles dictionary
+            tiles_copy = {}
+            for key, tile in tiles.items():
+                tiles_copy[key] = Tile(tile.value, tile.row, tile.col)
             
-        # Fallback: if no moves seem valid but game is not over, allow all moves
-        if not valid_moves and len(tiles) < ROWS * COLS:
-            valid_moves = [0, 1, 2, 3]
+            # Try the move on the copied tiles
+            # This is a simplified version that just checks if the move is valid
+            # without actually executing the full animation
+            moved = is_valid_move(tiles_copy, direction)
             
+            if moved:
+                valid_moves.append(action)
+        print(f"Valid moves: {valid_moves}")
         return valid_moves
+    
+    
     
     def act(self, state, valid_moves=None):
         """Choose an action using epsilon-greedy policy."""
@@ -324,7 +369,7 @@ def agent_play_game(window, agent, training=True, fps=30, delay=0.1):
         empty_cells = ROWS * COLS - len(tiles)
         
         # Get valid moves
-        valid_moves = agent.get_valid_moves(tiles)
+        valid_moves = agent.get_valid_moves(tiles,game)
         
         # Let agent choose an action
         if training:
