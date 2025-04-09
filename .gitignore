@@ -1,0 +1,24 @@
+# Ignore all .png files
+*.png
+
+# Ignore all weight files
+*.weights.*
+
+# Do not push python cache files, or any local config or environment files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.eggs/
+*.env
+*.venv/
+*.env.*
+*.venv.*
+*.local
+*.DS_Store
+*.vscode/
+
+
+
