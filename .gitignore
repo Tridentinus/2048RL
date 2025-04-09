@@ -3,7 +3,7 @@
 
 # Ignore all weight files
 *.weights.*
-
+*checkpoints/
 # Do not push python cache files, or any local config or environment files
 __pycache__/
 *.py[cod]
@@ -20,6 +20,8 @@ __pycache__/
 *.local
 *.DS_Store
 *.vscode/
+
+
 
 
 

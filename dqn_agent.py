@@ -1,15 +1,15 @@
 import numpy as np
 import tensorflow as tf
-policy = tf.keras.mixed_precision.Policy('mixed_float16')
-tf.keras.mixed_precision.set_global_policy(policy)
 from tensorflow import keras
 from tensorflow.keras import layers
-
 import random
 from collections import deque
 import os
 import matplotlib.pyplot as plt
 import time
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for saving figures
+
 def timer(func):
     """Decorator to time function execution"""
     def wrapper(*args, **kwargs):
@@ -19,6 +19,7 @@ def timer(func):
         # print(f"{func.__name__} took {end_time - start_time:.6f} seconds")
         return result
     return wrapper
+
 class DQNAgent:
     """
     Environment-agnostic DQN agent for playing 2048.
@@ -31,11 +32,11 @@ class DQNAgent:
         self.action_size = action_size
         
         # Learning parameters
-        self.learning_rate = 0.005
-        self.gamma = 0.99  # Discount factor
+        self.learning_rate = .0005
+        self.gamma = 0.999  # Discount factor
         self.epsilon = 1.0  # Exploration rate
         self.epsilon_min = 0.05
-        self.epsilon_decay = 0.9995
+        self.epsilon_decay = 0.9999
         
         # Experience replay parameters
         self.memory = deque(maxlen=100000)
@@ -52,6 +53,11 @@ class DQNAgent:
         self.scores = []
         self.max_tiles = []
         self.win_history = []
+        self.epsilon_history = []
+        
+        # Create plots directory
+        os.makedirs("training_plots", exist_ok=True)
+    
     # @timer
     def _build_model(self):
         """Create a CNN model for Q-value approximation."""
@@ -86,7 +92,8 @@ class DQNAgent:
     def remember(self, state, action, reward, next_state, done):
         """Store experience in memory."""
         self.memory.append((state, action, reward, next_state, done))
-    # @timer
+    
+    @timer
     def act(self, state, valid_moves=None):
         """Choose an action using epsilon-greedy policy."""
         state = np.expand_dims(state, axis=0)  # Add batch dimension
@@ -107,8 +114,6 @@ class DQNAgent:
         
         # For visualization purposes, return action and all Q-values
         return best_action, act_values
-    # @timer
-    # @tf.function
     
     @tf.function
     def _train_on_batch(self, states, targets):
@@ -119,7 +124,6 @@ class DQNAgent:
 
         gradients = tape.gradient(loss, self.model.trainable_variables)
         self.model.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
-
         
     def replay(self):
         if len(self.memory) < self.batch_size:
@@ -146,7 +150,6 @@ class DQNAgent:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
         
-        
     def load(self, name):
         """Load model weights."""
         self.model.load_weights(name)
@@ -156,7 +159,68 @@ class DQNAgent:
         """Save model weights."""
         self.model.save_weights(name)
     
-    def train_headless(self, env, episodes=10000, save_every=500, print_every=10,plot_every=25, checkpoint_dir="checkpoints"):
+    def generate_training_plots(self, episode, plot_every, save_dir="training_plots"):
+        """Generate plots during training to track progress."""
+        # Only generate plots at specified intervals or at the end
+        if episode % plot_every != 0 and episode != 0:
+            return
+            
+        # Don't generate plots if we don't have any data yet
+        if not self.scores:
+            print("Not enough data to generate plots yet. Skipping plot generation.")
+            return
+
+        # Create figure with multiple subplots
+        fig, axs = plt.subplots(2, 2, figsize=(15, 10))
+        
+        # Create episode index for x-axis
+        episodes_range = list(range(len(self.scores)))
+        
+        # Plot scores
+        axs[0, 0].plot(episodes_range, self.scores)
+        axs[0, 0].set_title('Game Score')
+        axs[0, 0].set_xlabel('Episode')
+        axs[0, 0].set_ylabel('Score')
+        
+        # Add a 100-episode moving average to the score plot if there are enough episodes
+        if len(self.scores) >= 100:
+            moving_avg = np.convolve(self.scores, np.ones(100)/100, mode='valid')
+            axs[0, 0].plot(range(99, len(self.scores)), moving_avg, 'r', label='100-ep Moving Avg')
+            axs[0, 0].legend()
+        
+        # Plot max tiles
+        axs[0, 1].plot(episodes_range, self.max_tiles)
+        axs[0, 1].set_title('Max Tile')
+        axs[0, 1].set_xlabel('Episode')
+        axs[0, 1].set_ylabel('Max Tile Value')
+        
+        # Plot win rate (moving average)
+        window_size = min(100, len(self.win_history))
+        if window_size > 0:
+            win_rate = [np.mean(self.win_history[max(0, i-window_size):i+1])*100 
+                       for i in range(len(self.win_history))]
+            axs[1, 0].plot(episodes_range, win_rate)
+            axs[1, 0].set_title(f'Win Rate ({window_size}-ep moving avg)')
+            axs[1, 0].set_xlabel('Episode')
+            axs[1, 0].set_ylabel('Win Rate (%)')
+            axs[1, 0].set_ylim(0, 100)
+        
+        # Plot epsilon decay
+        axs[1, 1].plot(episodes_range, self.epsilon_history)
+        axs[1, 1].set_title('Exploration Rate (Epsilon)')
+        axs[1, 1].set_xlabel('Episode')
+        axs[1, 1].set_ylabel('Epsilon')
+        axs[1, 1].set_ylim(0, 1)
+        
+        plt.tight_layout()
+        filename = os.path.join(save_dir, f"training_progress_ep{episode}.png")
+        plt.savefig(filename)
+        plt.close(fig)
+        
+        print(f"Training progress plot saved to {filename}")
+    
+    def train_headless(self, env, episodes=10000, save_every=500, print_every=10, 
+                      plot_every=100, checkpoint_dir="checkpoints"):
         """
         Train the agent on a headless environment for fast training.
         
@@ -165,6 +229,7 @@ class DQNAgent:
         - episodes: Number of episodes to train for
         - save_every: Save the model every X episodes
         - print_every: Print progress every X episodes
+        - plot_every: Generate and save plots every X episodes
         - checkpoint_dir: Directory to save checkpoints
         
         Returns:
@@ -173,11 +238,13 @@ class DQNAgent:
         # Create checkpoint directory if it doesn't exist
         os.makedirs(checkpoint_dir, exist_ok=True)
         
+        # Ensure plot_every is not too frequent (minimum 10 episodes)
+        plot_every = max(10, plot_every)
+        
         start_time = time.time()
         
         for episode in range(episodes):
             # Reset the environment
-            print(episode)
             state = env.reset()
             total_reward = 0
             done = False
@@ -189,7 +256,7 @@ class DQNAgent:
             while not done:
                 # Get valid moves
                 valid_moves = env.get_valid_moves()
-                # print(valid_moves)
+                
                 # Choose action
                 action_info = self.act(state, valid_moves)
                 action = action_info[0] if isinstance(action_info, tuple) else action_info
@@ -209,9 +276,9 @@ class DQNAgent:
                 state = next_state
                 
                 # Learn from experiences
-                # self.replay()
-                if steps % 4 == 0:
-                  self.replay()
+                if steps % 4 == 0:  # Learn every 4 steps
+                    self.replay()
+                
                 # Update target model periodically
                 if steps % 500 == 0:
                     self.update_target_model()
@@ -220,9 +287,12 @@ class DQNAgent:
             
             # Record episode results
             self.train_episodes += 1
-            self.scores.append(info['score'])
+            score = info.get('score', 0)
+            # print(score)
+            self.scores.append(score)
             self.max_tiles.append(max_tile)
             self.win_history.append(1 if info['won'] else 0)
+            self.epsilon_history.append(self.epsilon)
             
             # Update best score
             if info['score'] > self.best_score:
@@ -245,12 +315,19 @@ class DQNAgent:
                       f"Epsilon: {self.epsilon:.4f} | "
                       f"Elapsed: {elapsed:.1f}s")
             
+            # Generate training plots - but only after we have collected some data
+            if episode >= 10:  # Wait for at least 10 episodes before first plot
+                self.generate_training_plots(episode, plot_every)
+            
             # Save model periodically
             if episode > 0 and episode % save_every == 0:
                 self.save(os.path.join(checkpoint_dir, f"model_ep{episode}.weights.h5"))
         
         # Final save
         self.save(os.path.join(checkpoint_dir, "final_model.weights.h5"))
+        
+        # Final plot
+        self.generate_training_plots(episodes, 1)
         
         # Calculate training duration
         training_time = time.time() - start_time
@@ -316,35 +393,52 @@ class DQNAgent:
         return scores, max_tiles, win_rate
     
     def plot_training_results(self, save_path="training_results.png"):
-        """Plot training metrics."""
-        plt.figure(figsize=(15, 5))
+        """Plot training metrics and save to file."""
+        plt.figure(figsize=(15, 10))
+        
+        # Create episode index for x-axis
+        episodes_range = list(range(len(self.scores)))
         
         # Plot scores
-        plt.subplot(1, 3, 1)
-        plt.plot(self.scores)
+        plt.subplot(2, 2, 1)
+        plt.plot(episodes_range, self.scores)
         plt.title('Game Score')
         plt.xlabel('Episode')
         plt.ylabel('Score')
         
+        # Add moving average if we have enough data
+        if len(self.scores) >= 100:
+            moving_avg = np.convolve(self.scores, np.ones(100)/100, mode='valid')
+            plt.plot(range(99, len(self.scores)), moving_avg, 'r', label='100-ep Moving Avg')
+            plt.legend()
+        
         # Plot max tiles
-        plt.subplot(1, 3, 2)
-        plt.plot(self.max_tiles)
+        plt.subplot(2, 2, 2)
+        plt.plot(episodes_range, self.max_tiles)
         plt.title('Max Tile')
         plt.xlabel('Episode')
         plt.ylabel('Max Tile Value')
         
         # Plot win rate (moving average)
-        plt.subplot(1, 3, 3)
+        plt.subplot(2, 2, 3)
         window_size = min(100, len(self.win_history))
         if window_size > 0:
             win_rate = [np.mean(self.win_history[max(0, i-window_size):i+1])*100 
                        for i in range(len(self.win_history))]
-            plt.plot(win_rate)
+            plt.plot(episodes_range, win_rate)
             plt.title(f'Win Rate ({window_size}-ep moving avg)')
             plt.xlabel('Episode')
             plt.ylabel('Win Rate (%)')
             plt.ylim(0, 100)
         
+        # Plot epsilon decay
+        plt.subplot(2, 2, 4)
+        plt.plot(episodes_range, self.epsilon_history)
+        plt.title('Exploration Rate (Epsilon)')
+        plt.xlabel('Episode')
+        plt.ylabel('Epsilon')
+        plt.ylim(0, 1)
+        
         plt.tight_layout()
         plt.savefig(save_path)
-        plt.show()
+        plt.close()

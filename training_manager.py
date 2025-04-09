@@ -15,7 +15,7 @@ def import_pygame_game():
         print("Original pygame implementation not found.")
         return False
 
-def train_with_pygame(agent, fps=30, delay=0.1, episodes=None, model_path=None):
+def train_with_pygame(agent, fps=30, delay=0.1, episodes=None, model_path=None, plot_every=100):
     """Train the agent using the pygame visualization."""
     pygame_available = import_pygame_game()
     if not pygame_available:
@@ -39,16 +39,16 @@ def train_with_pygame(agent, fps=30, delay=0.1, episodes=None, model_path=None):
     
     # Train the agent
     scores, max_tiles, win_history = agent_play_game(
-        window, agent, training=True, fps=fps, delay=delay, max_episodes=episodes)
+        window, agent, training=True, fps=fps, delay=delay, max_episodes=episodes, plot_every=plot_every)
     
     pygame.quit()
     
-    # Plot training results
+    # Plot final training results
     agent.plot_training_results()
     
     return scores, max_tiles, win_history
 
-def train_with_simulation(agent, episodes=10000, model_path=None):
+def train_with_simulation(agent, episodes=10000, model_path=None, plot_every=100):
     """Train the agent using the fast simulation."""
     from sim2048 import Game2048Sim
     
@@ -65,9 +65,12 @@ def train_with_simulation(agent, episodes=10000, model_path=None):
     print(f"Starting fast simulation training for {episodes} episodes...")
     start_time = time.time()
     
-    # Train agent
+    # Create plots directory
+    os.makedirs("training_plots", exist_ok=True)
+    
+    # Train agent with progress plots
     scores, max_tiles, win_history = agent.train_headless(
-        env, episodes=episodes, save_every=500, print_every=10)
+        env, episodes=episodes, save_every=500, print_every=25, plot_every=plot_every)
     
     # Calculate training speed
     end_time = time.time()
@@ -77,7 +80,7 @@ def train_with_simulation(agent, episodes=10000, model_path=None):
     print(f"Training complete! {episodes} episodes in {training_time:.1f} seconds")
     print(f"Training speed: {eps_per_second:.2f} episodes per second")
     
-    # Plot training results
+    # Plot final training results
     agent.plot_training_results()
     
     return scores, max_tiles, win_history
@@ -115,7 +118,7 @@ def test_with_pygame(agent, model_path, fps=10, delay=0.3, episodes=10):
 
 def test_with_simulation(agent, model_path, episodes=100):
     """Test the agent using the fast simulation."""
-    from game2048_sim import Game2048Sim
+    from sim2048 import Game2048Sim
     
     # Create environment
     env = Game2048Sim()
@@ -175,6 +178,10 @@ def main():
     parser.add_argument('--delay', type=float, default=0.1,
                         help='Delay between agent moves in visualization (default: 0.1)')
     
+    # Progress tracking
+    parser.add_argument('--plot_every', type=int, default=100,
+                        help='Generate progress plots every N episodes (default: 100)')
+    
     args = parser.parse_args()
     
     # Create agent
@@ -183,12 +190,13 @@ def main():
     if args.mode == 'sim_train':
         # Fast simulation training
         episodes = args.episodes if args.episodes else 10000
-        train_with_simulation(agent, episodes=episodes, model_path=args.model)
+        train_with_simulation(agent, episodes=episodes, model_path=args.model, plot_every=args.plot_every)
         
     elif args.mode == 'vis_train':
         # Visual training with pygame
         episodes = args.episodes if args.episodes else 1000
-        train_with_pygame(agent, fps=args.fps, delay=args.delay, episodes=episodes, model_path=args.model)
+        train_with_pygame(agent, fps=args.fps, delay=args.delay, episodes=episodes, 
+                         model_path=args.model, plot_every=args.plot_every)
         
     elif args.mode == 'sim_test':
         # Fast simulation testing

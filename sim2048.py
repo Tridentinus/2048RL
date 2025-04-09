@@ -4,7 +4,7 @@ import math
 import time
 from game2048 import timer
 
-winTile = 128
+winTile = 1024
 def timer(func):
     """Decorator to time function execution"""
     def wrapper(*args, **kwargs):
@@ -222,7 +222,7 @@ class Game2048Sim:
         
         # Extra penalties for game over without winning
         if self.done and not self.won:
-            reward -= 100
+            reward -= 1000
         
         return reward
     
