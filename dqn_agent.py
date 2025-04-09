@@ -66,22 +66,27 @@ class DQNAgent:
         # Reshape to add channel dimension for CNN
         x = layers.Reshape((*self.state_shape, 1))(inputs)
         
-        # CNN layers
+        # CNN layers with batch normalization
         x = layers.Conv2D(64, (2, 2), padding='same', activation='relu')(x)
+        x = layers.BatchNormalization()(x)
         x = layers.Conv2D(128, (2, 2), padding='same', activation='relu')(x)
+        x = layers.BatchNormalization()(x)
         x = layers.Conv2D(128, (2, 2), padding='same', activation='relu')(x)
+        x = layers.BatchNormalization()(x)
         
-        # Flatten and dense layers
+        # Flatten and dense layers with batch normalization
         x = layers.Flatten()(x)
         x = layers.Dense(256, activation='relu')(x)
+        x = layers.BatchNormalization()(x)
         x = layers.Dense(128, activation='relu')(x)
+        x = layers.BatchNormalization()(x)
         
         # Output layer (Q-values for each action)
         outputs = layers.Dense(self.action_size, activation='linear')(x)
         
         model = keras.Model(inputs=inputs, outputs=outputs)
         model.compile(optimizer=keras.optimizers.Adam(learning_rate=self.learning_rate),
-                     loss='mse')
+                      loss='mse')
         
         return model
     
