@@ -31,7 +31,7 @@ class DQNAgent:
         self.action_size = action_size
         
         # Learning parameters
-        self.learning_rate = 0.0005
+        self.learning_rate = 0.005
         self.gamma = 0.99  # Discount factor
         self.epsilon = 1.0  # Exploration rate
         self.epsilon_min = 0.05
@@ -156,7 +156,7 @@ class DQNAgent:
         """Save model weights."""
         self.model.save_weights(name)
     
-    def train_headless(self, env, episodes=10000, save_every=500, print_every=10, checkpoint_dir="checkpoints"):
+    def train_headless(self, env, episodes=10000, save_every=500, print_every=10,plot_every=25, checkpoint_dir="checkpoints"):
         """
         Train the agent on a headless environment for fast training.
         

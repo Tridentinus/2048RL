@@ -67,7 +67,7 @@ def train_with_simulation(agent, episodes=10000, model_path=None):
     
     # Train agent
     scores, max_tiles, win_history = agent.train_headless(
-        env, episodes=episodes, save_every=500, print_every=100)
+        env, episodes=episodes, save_every=500, print_every=10)
     
     # Calculate training speed
     end_time = time.time()

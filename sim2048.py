@@ -3,6 +3,8 @@ import random
 import math
 import time
 from game2048 import timer
+
+winTile = 128
 def timer(func):
     """Decorator to time function execution"""
     def wrapper(*args, **kwargs):
@@ -174,7 +176,7 @@ class Game2048Sim:
         
         # Check for win condition (2048 tile)
         current_max = np.max(self.board)
-        if current_max >= 2048 and not self.won:
+        if current_max >= winTile and not self.won:
             self.won = True
         
         # Check for game over (no valid moves)
@@ -188,7 +190,7 @@ class Game2048Sim:
             current_max=current_max,
             prev_empty=prev_empty,
             current_empty=np.sum(self.board == 0),
-            newly_won=current_max >= 2048 and prev_max_tile < 2048
+            newly_won=current_max >= winTile and prev_max_tile < winTile
         )
         
         return self.get_state(), reward, self.done, {
