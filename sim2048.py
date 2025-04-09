@@ -4,7 +4,7 @@ import math
 import time
 from game2048 import timer
 
-winTile = 1024
+winTile = 2048  # The tile value to reach for winning the game
 def timer(func):
     """Decorator to time function execution"""
     def wrapper(*args, **kwargs):
@@ -199,33 +199,69 @@ class Game2048Sim:
             "max_tile": current_max
         }
     
-    def _calculate_reward(self, score_gain, prev_max_tile, current_max, 
-                         prev_empty, current_empty, newly_won):
-        """Calculate the reward for the current step."""
+    # def _calculate_reward(self, score_gain, prev_max_tile, current_max, 
+    #                      prev_empty, current_empty, newly_won):
+    #     """Calculate the reward for the current step."""
+    #     reward = 0
+        
+    #     # Base reward from score gain
+    #     reward += score_gain
+        
+    #     # Reward for increasing max tile
+    #     if current_max > prev_max_tile:
+    #         # Logarithmic bonus for reaching new powers of 2
+    #         reward += 10 * np.log2(current_max / prev_max_tile)
+        
+    #     # Reward/penalty for empty tiles
+    #     empty_diff = current_empty - prev_empty
+    #     reward += empty_diff * 2
+        
+    #     # Big reward for winning
+    #     if newly_won:
+    #         reward += 1000
+        
+    #     # Extra penalties for game over without winning
+    #     if self.done and not self.won:
+    #         reward -= 1000
+        
+    #     return reward
+    # Modified reward calculation
+    def _calculate_reward(self, score_gain, prev_max_tile, current_max, prev_empty, current_empty, newly_won):
         reward = 0
         
         # Base reward from score gain
-        reward += score_gain
+        reward += score_gain * 0.1  # Scale down raw score gain
         
-        # Reward for increasing max tile
+        # Exponential reward for increasing max tile
         if current_max > prev_max_tile:
-            # Logarithmic bonus for reaching new powers of 2
-            reward += 10 * np.log2(current_max / prev_max_tile)
+            # More aggressive bonus for higher tiles
+            reward += 20 * (np.log2(current_max) ** 1.5)
+            
+            # Milestone bonuses
+            if current_max >= 512 and prev_max_tile < 512:
+                reward += 500
+            if current_max >= 1024 and prev_max_tile < 1024:
+                reward += 1000
+            if current_max >= 2048 and prev_max_tile < 2048:
+                reward += 2000
         
-        # Reward/penalty for empty tiles
+        # Reward/penalty for empty tiles (board management)
         empty_diff = current_empty - prev_empty
-        reward += empty_diff * 2
+        reward += empty_diff * 5  # Increased weight
         
-        # Big reward for winning
+        # Bonus for keeping corners filled with high values
+        # corner_values = [board[0,0], board[0,3], board[3,0], board[3,3]]
+        # reward += sum([np.log2(v) for v in corner_values if v > 0]) * 0.5
+        
+        # Win condition
         if newly_won:
-            reward += 1000
+            reward += 5000  # Much larger reward
         
         # Extra penalties for game over without winning
         if self.done and not self.won:
-            reward -= 1000
+            reward -= 200
         
         return reward
-    
     def render_text(self):
         """Render the game as text for debugging."""
         print(f"Score: {self.score}  High Score: {self.high_score}")

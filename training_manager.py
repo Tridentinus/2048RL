@@ -48,7 +48,7 @@ def train_with_pygame(agent, fps=30, delay=0.1, episodes=None, model_path=None, 
     
     return scores, max_tiles, win_history
 
-def train_with_simulation(agent, episodes=10000, model_path=None, plot_every=100):
+def train_with_simulation(agent, episodes=10000, model_path=None, plot_every=100,print_every=25):
     """Train the agent using the fast simulation."""
     from sim2048 import Game2048Sim
     
@@ -70,7 +70,7 @@ def train_with_simulation(agent, episodes=10000, model_path=None, plot_every=100
     
     # Train agent with progress plots
     scores, max_tiles, win_history = agent.train_headless(
-        env, episodes=episodes, save_every=500, print_every=25, plot_every=plot_every)
+        env, episodes=episodes, save_every=500, print_every=print_every, plot_every=plot_every)
     
     # Calculate training speed
     end_time = time.time()
@@ -182,6 +182,9 @@ def main():
     parser.add_argument('--plot_every', type=int, default=100,
                         help='Generate progress plots every N episodes (default: 100)')
     
+    parser.add_argument('--print_every', type=int, default=25,
+                        help='Print progress every N episodes (default: 25)')
+    
     args = parser.parse_args()
     
     # Create agent
@@ -190,13 +193,13 @@ def main():
     if args.mode == 'sim_train':
         # Fast simulation training
         episodes = args.episodes if args.episodes else 10000
-        train_with_simulation(agent, episodes=episodes, model_path=args.model, plot_every=args.plot_every)
+        train_with_simulation(agent, episodes=episodes, model_path=args.model, plot_every=args.plot_every,print_every=args.print_every)
         
     elif args.mode == 'vis_train':
         # Visual training with pygame
         episodes = args.episodes if args.episodes else 1000
         train_with_pygame(agent, fps=args.fps, delay=args.delay, episodes=episodes, 
-                         model_path=args.model, plot_every=args.plot_every)
+                         model_path=args.model, plot_every=args.plot_every, print_every=args.print_every)
         
     elif args.mode == 'sim_test':
         # Fast simulation testing

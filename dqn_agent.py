@@ -32,15 +32,15 @@ class DQNAgent:
         self.action_size = action_size
         
         # Learning parameters
-        self.learning_rate = .0005
+        self.learning_rate = .00005
         self.gamma = 0.999  # Discount factor
         self.epsilon = 1.0  # Exploration rate
         self.epsilon_min = 0.05
-        self.epsilon_decay = 0.9999
+        self.epsilon_decay = 0.99995
         
         # Experience replay parameters
         self.memory = deque(maxlen=100000)
-        self.batch_size = 32
+        self.batch_size = 128
         
         # Build models
         self.model = self._build_model()
@@ -278,9 +278,10 @@ class DQNAgent:
                 # Learn from experiences
                 if steps % 4 == 0:  # Learn every 4 steps
                     self.replay()
+                # self.replay()
                 
                 # Update target model periodically
-                if steps % 500 == 0:
+                if steps % 50 == 0:
                     self.update_target_model()
                     
                 steps += 1
@@ -288,7 +289,7 @@ class DQNAgent:
             # Record episode results
             self.train_episodes += 1
             score = info.get('score', 0)
-            # print(score)
+            print(score, max_tile)
             self.scores.append(score)
             self.max_tiles.append(max_tile)
             self.win_history.append(1 if info['won'] else 0)
