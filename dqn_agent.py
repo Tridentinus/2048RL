@@ -32,7 +32,7 @@ class DQNAgent:
         self.action_size = action_size
         
         # Learning parameters
-        self.learning_rate = .0005
+        self.learning_rate = .001
         self.gamma = 0.999  # Discount factor
         self.epsilon = 1.0  # Exploration rate
         self.epsilon_min = 0.05
@@ -242,6 +242,21 @@ class DQNAgent:
         plot_every = max(10, plot_every)
         
         start_time = time.time()
+        # print the hyperparameters
+        print(f"Training hyperparameters: \n"
+                f"  - Episodes: {episodes}\n"
+                f"  - Save every: {save_every}\n"
+                f"  - Print every: {print_every}\n"
+                f"  - Plot every: {plot_every}\n"
+                f"  - Checkpoint directory: {checkpoint_dir}\n"
+                f"  - Epsilon decay: {self.epsilon_decay}\n"
+                f"  - Epsilon min: {self.epsilon_min}\n"
+                f"  - Learning rate: {self.learning_rate}\n"
+                f"  - Batch size: {self.batch_size}\n"
+                f"  - Memory size: {len(self.memory)}\n"
+                f"  - Gamma: {self.gamma}\n"
+                f"  - Target model update frequency: 500 steps\n"
+        )
         
         for episode in range(episodes):
             # Reset the environment
