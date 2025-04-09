@@ -52,7 +52,7 @@ class DQNAgent:
         self.scores = []
         self.max_tiles = []
         self.win_history = []
-    @timer
+    # @timer
     def _build_model(self):
         """Create a CNN model for Q-value approximation."""
         inputs = layers.Input(shape=self.state_shape)
@@ -86,7 +86,7 @@ class DQNAgent:
     def remember(self, state, action, reward, next_state, done):
         """Store experience in memory."""
         self.memory.append((state, action, reward, next_state, done))
-    @timer
+    # @timer
     def act(self, state, valid_moves=None):
         """Choose an action using epsilon-greedy policy."""
         state = np.expand_dims(state, axis=0)  # Add batch dimension
@@ -107,36 +107,46 @@ class DQNAgent:
         
         # For visualization purposes, return action and all Q-values
         return best_action, act_values
-    @timer
-    def replay(self):
-      if len(self.memory) < self.batch_size:
-          return
-      
-      # Sample batch
-      minibatch = random.sample(self.memory, self.batch_size)
-      
-      # Prepare batch data
-      states = np.array([experience[0] for experience in minibatch])
-      actions = np.array([experience[1] for experience in minibatch])
-      rewards = np.array([experience[2] for experience in minibatch])
-      next_states = np.array([experience[3] for experience in minibatch])
-      dones = np.array([experience[4] for experience in minibatch])
-      
-      # Get all predictions in one batch
-      current_q_values = self.model.predict(states, verbose=0)
-      next_q_values = self.target_model.predict(next_states, verbose=0)
-      
-      # Calculate targets
-      targets = current_q_values.copy()
-      for i in range(self.batch_size):
-          if dones[i]:
-              targets[i, actions[i]] = rewards[i]
-          else:
-              targets[i, actions[i]] = rewards[i] + self.gamma * np.max(next_q_values[i])
-      
-      # Train model
-      self.model.fit(states, targets, epochs=1, verbose=0, batch_size=self.batch_size)
+    # @timer
+    # @tf.function
     
+    @tf.function
+    def _train_on_batch(self, states, targets):
+        with tf.GradientTape() as tape:
+            predictions = self.model(states, training=True)
+            mse = tf.keras.losses.MeanSquaredError()
+            loss = mse(targets, predictions)
+
+        gradients = tape.gradient(loss, self.model.trainable_variables)
+        self.model.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
+
+        
+    def replay(self):
+        if len(self.memory) < self.batch_size:
+            return
+        
+        minibatch = random.sample(self.memory, self.batch_size)
+        states = np.array([exp[0] for exp in minibatch])
+        actions = np.array([exp[1] for exp in minibatch])
+        rewards = np.array([exp[2] for exp in minibatch])
+        next_states = np.array([exp[3] for exp in minibatch])
+        dones = np.array([exp[4] for exp in minibatch])
+        
+        current_q_values = self.model.predict(states, verbose=0)
+        next_q_values = self.target_model.predict(next_states, verbose=0)
+
+        targets = current_q_values.copy()
+        for i in range(self.batch_size):
+            if dones[i]:
+                targets[i, actions[i]] = rewards[i]
+            else:
+                targets[i, actions[i]] = rewards[i] + self.gamma * np.max(next_q_values[i])
+        
+        self._train_on_batch(states, targets)
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+        
+        
     def load(self, name):
         """Load model weights."""
         self.model.load_weights(name)
@@ -146,7 +156,7 @@ class DQNAgent:
         """Save model weights."""
         self.model.save_weights(name)
     
-    def train_headless(self, env, episodes=10000, save_every=500, print_every=100, checkpoint_dir="checkpoints"):
+    def train_headless(self, env, episodes=10000, save_every=500, print_every=10, checkpoint_dir="checkpoints"):
         """
         Train the agent on a headless environment for fast training.
         
@@ -237,10 +247,10 @@ class DQNAgent:
             
             # Save model periodically
             if episode > 0 and episode % save_every == 0:
-                self.save(os.path.join(checkpoint_dir, f"model_ep{episode}.h5"))
+                self.save(os.path.join(checkpoint_dir, f"model_ep{episode}.weights.h5"))
         
         # Final save
-        self.save(os.path.join(checkpoint_dir, "final_model.h5"))
+        self.save(os.path.join(checkpoint_dir, "final_model.weights.h5"))
         
         # Calculate training duration
         training_time = time.time() - start_time

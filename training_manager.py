@@ -23,7 +23,7 @@ def train_with_pygame(agent, fps=30, delay=0.1, episodes=None, model_path=None):
         return
     
     # Import the pygame training function
-    from pygame_agent import agent_play_game
+    from dqn_agent import agent_play_game
     
     # Initialize pygame
     pygame.init()

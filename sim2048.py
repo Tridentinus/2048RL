@@ -50,7 +50,7 @@ class Game2048Sim:
         mask = self.board > 0
         log_board[mask] = np.log2(self.board[mask])
         return log_board
-    @timer
+    # @timer
     def get_valid_moves(self):
         """Get valid moves (0=UP, 1=RIGHT, 2=DOWN, 3=LEFT)."""
         valid_moves = []
@@ -61,14 +61,14 @@ class Game2048Sim:
                 valid_moves.append(action)
                 
         return valid_moves
-    @timer
+    # @timer
     def _is_valid_move(self, direction):
         """Check if a move in the given direction would change the board state."""
         # Create a copy of the board to simulate the move
         board_copy = self.board.copy()
         merged, _ = self._move(board_copy, direction)
         return merged
-    @timer
+    # @timer
     def _move(self, board, direction):
         """
         Execute a move on the provided board.
@@ -128,7 +128,7 @@ class Game2048Sim:
             board = np.rot90(board, k=1)
         
         return moved, score_gain
-    @timer
+    # @timer
     def step(self, action):
         """
         Take an action and update the game state.
