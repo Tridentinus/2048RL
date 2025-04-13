@@ -3,6 +3,7 @@
 
 # Ignore all weight files
 *.weights.*
+**.h5
 *checkpoints/
 # Do not push python cache files, or any local config or environment files
 __pycache__/
@@ -22,6 +23,7 @@ __pycache__/
 *.vscode/
 
 
+*.sh
 
 
-
+*.txt
