@@ -264,8 +264,8 @@ def move_tiles(window,tiles,clock,direction,game):
             updated = True
 
         update_tiles(window, tiles, sorted_tiles,game)
-    if win_detected:
-        print("You win!")
+    # if win_detected:
+        # print("You win!")
     return end_move(tiles), score_up
     
 

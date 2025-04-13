@@ -66,11 +66,11 @@ def train_with_simulation(agent, episodes=10000, model_path=None, plot_every=100
     start_time = time.time()
     
     # Create plots directory
-    os.makedirs("training_plots", exist_ok=True)
+    os.makedirs("../training_plots", exist_ok=True)
     
     # Train agent with progress plots
     scores, max_tiles, win_history = agent.train_headless(
-        env, episodes=episodes, save_every=500, print_every=print_every, plot_every=plot_every)
+        env, episodes=episodes, save_every=100, print_every=print_every, plot_every=plot_every)
     
     # Calculate training speed
     end_time = time.time()
@@ -188,7 +188,7 @@ def main():
     args = parser.parse_args()
     
     # Create agent
-    agent = DQNAgent(state_shape=(4, 4), action_size=4)
+    agent = DQNAgent(state_shape=(3, 3), action_size=4)
     
     if args.mode == 'sim_train':
         # Fast simulation training

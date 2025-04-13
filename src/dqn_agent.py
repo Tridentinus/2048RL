@@ -32,7 +32,7 @@ class DQNAgent:
         self.action_size = action_size
         
         # Learning parameters
-        self.learning_rate = .001
+        self.learning_rate = .0005
         self.gamma = 0.999  # Discount factor
         self.epsilon = 1.0  # Exploration rate
         self.epsilon_min = 0.05
@@ -51,12 +51,13 @@ class DQNAgent:
         self.train_episodes = 0
         self.best_score = 0
         self.scores = []
+        self.reward_history = []
         self.max_tiles = []
         self.win_history = []
         self.epsilon_history = []
         
         # Create plots directory
-        os.makedirs("training_plots", exist_ok=True)
+        os.makedirs("../training_plots", exist_ok=True)
     
     # @timer
     def _build_model(self):
@@ -164,7 +165,7 @@ class DQNAgent:
         """Save model weights."""
         self.model.save_weights(name)
     
-    def generate_training_plots(self, episode, plot_every, save_dir="training_plots"):
+    def generate_training_plots(self, episode, plot_every, save_dir="../training_plots"):
         """Generate plots during training to track progress."""
         # Only generate plots at specified intervals or at the end
         if episode % plot_every != 0 and episode != 0:
@@ -225,7 +226,7 @@ class DQNAgent:
         print(f"Training progress plot saved to {filename}")
     
     def train_headless(self, env, episodes=10000, save_every=500, print_every=10, 
-                      plot_every=100, checkpoint_dir="checkpoints"):
+                      plot_every=100, checkpoint_dir="../checkpoints"):
         """
         Train the agent on a headless environment for fast training.
         
@@ -284,6 +285,7 @@ class DQNAgent:
                 # Take action
                 next_state, reward, done, info = env.step(action)
                 total_reward += reward
+
                 
                 # Update maximum tile
                 if 'max_tile' in info:
@@ -308,16 +310,23 @@ class DQNAgent:
             # Record episode results
             self.train_episodes += 1
             score = info.get('score', 0)
+            
+
             # print(score)
             self.scores.append(score)
             self.max_tiles.append(max_tile)
             self.win_history.append(1 if info['won'] else 0)
             self.epsilon_history.append(self.epsilon)
+            self.reward_history.append(total_reward)
             
             # Update best score
             if info['score'] > self.best_score:
                 self.best_score = info['score']
                 self.save(os.path.join(checkpoint_dir, "best_model.weights.h5"))
+
+            # update best reward
+            if total_reward > max(self.reward_history, default=0):
+                self.save(os.path.join(checkpoint_dir, "best_reward_model.weights.h5"))
             
             # Print progress
             if episode % print_every == 0 or episode == episodes - 1:
@@ -325,12 +334,14 @@ class DQNAgent:
                 avg_max_tile = np.mean(self.max_tiles[-print_every:]) if self.max_tiles else 0
                 win_rate = np.mean(self.win_history[-print_every:]) * 100 if self.win_history else 0
                 elapsed = time.time() - start_time
-                
+                avg_reward = np.mean(self.reward_history[-print_every:]) if self.reward_history else 0  
                 print(f"Episode: {episode}/{episodes} | "
                       f"Score: {info['score']} | "
+                      f"Reward: {total_reward} | "
                       f"Max Tile: {max_tile} | "
                       f"Steps: {steps} | "
                       f"Avg Score: {avg_score:.1f} | "
+                      f"Avg Reward: {avg_reward:.1f} | "
                       f"Win Rate: {win_rate:.1f}% | "
                       f"Epsilon: {self.epsilon:.4f} | "
                       f"Elapsed: {elapsed:.1f}s")

@@ -4,7 +4,7 @@ import math
 import time
 from game2048 import timer
 
-winTile = 1024
+winTile = 64
 def timer(func):
     """Decorator to time function execution"""
     def wrapper(*args, **kwargs):
@@ -21,8 +21,8 @@ class Game2048Sim:
     """
     
     def __init__(self):
-        self.rows = 4
-        self.cols = 4
+        self.rows = 3
+        self.cols = 3
         self.reset()
     
     def reset(self):
@@ -196,7 +196,8 @@ class Game2048Sim:
         return self.get_state(), reward, self.done, {
             "score": self.score,
             "won": self.won,
-            "max_tile": current_max
+            "max_tile": current_max,
+            "reward": reward
         }
     
     def _calculate_reward(self, score_gain, prev_max_tile, current_max, 
@@ -205,24 +206,29 @@ class Game2048Sim:
         reward = 0
         
         # Base reward from score gain
+        # print(f"Score gain: {score_gain}")
         reward += score_gain
+        
         
         # Reward for increasing max tile
         if current_max > prev_max_tile:
             # Logarithmic bonus for reaching new powers of 2
-            reward += 10 * np.log2(current_max / prev_max_tile)
+            progress_reward = 20 * (np.log2(current_max/prev_max_tile )**1.5)
+            # print(f"Max tile reward (reached {current_max}): {progress_reward}")
+            reward += progress_reward
         
         # Reward/penalty for empty tiles
-        empty_diff = current_empty - prev_empty
-        reward += empty_diff * 2
+        # empty_diff = current_empty - prev_empty
+        # reward += empty_diff * 2
         
         # Big reward for winning
         if newly_won:
+            # print("You won!, reward: 1000")
             reward += 1000
         
         # Extra penalties for game over without winning
-        if self.done and not self.won:
-            reward -= 1000
+        # if self.done and not self.won:
+        #     reward -= 100
         
         return reward
     
@@ -267,13 +273,13 @@ def interactive_play():
     print("=========================\n")
     
     game.render_text()
-    
+    total_reward = 0
+
     while not game.done:
         # Show valid moves
         valid_moves = game.get_valid_moves()
         valid_directions = [["UP", "RIGHT", "DOWN", "LEFT"][m] for m in valid_moves]
         print(f"Valid moves: {', '.join(valid_directions)}")
-        
         # Get user input
         user_input = input("Enter move (w/d/s/a) or q to quit: ").lower()
         
@@ -291,17 +297,17 @@ def interactive_play():
         if action not in valid_moves:
             print(f"Invalid move! That direction won't change the board.")
             continue
-            
+
         # Execute the move
         _, reward, done, info = game.step(action)
-        
+        total_reward += reward
         # Clear the screen (optional, may not work in all environments)
         print("\n" * 5)
         
         # Show the game state
         game.render_text()
         print(f"Reward: {reward}")
-        
+        print(f"Total Reward: {total_reward}")
         if done:
             if game.won:
                 print("Congratulations! You won!")
@@ -338,6 +344,7 @@ def agent_play(agent, visual_delay=0.5, max_steps=1000):
         # Execute the move
         next_state, reward, done, info = game.step(action)
         total_reward += reward
+        # print(f"Total Reward: {reward}")
         steps += 1
         
         # Update state
